@@ -131,14 +131,14 @@ int WINAPI wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int)
 
 	// get executable paths
 	auto pathDir = GetMirrorDir();
-	auto pathExe = pathDir + L"/game.exe";
-	if (pathExe.empty()) {
+	if (pathDir.empty()) {
 		ShowErrorMessageBox(L"Failed to locate install directory from registry", NO_ERROR);
 		return 0;  // according to MSDN, we should return zero before entering the message loop
 	}
-	DEBUG_MSG(L"EXE path: %s\n", pathExe.c_str());
 
 	// create and purify
+	auto pathExe = pathDir + L"/game.exe";
+	DEBUG_MSG(L"EXE path: %s\n", pathExe.c_str());
 	auto createdPid = CreatePurifiedProcess(pathExe.c_str(), pathDir.c_str(), pathPayload.c_str());
 	if (createdPid == 0) {
 		auto errCode = GetLastError();

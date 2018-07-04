@@ -124,12 +124,14 @@
   <ItemGroup>
     <ClCompile Include="payload\detours\d3d11.cpp" />
     <ClCompile Include="payload\payload.cpp" />
+    <ClCompile Include="payload\TextureFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="payload\payload.rc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="payload\detours\d3d11.h" />
+    <ClInclude Include="payload\TextureFilter.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

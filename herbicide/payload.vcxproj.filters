@@ -11,6 +11,7 @@
     <ClCompile Include="payload\detours\d3d11.cpp">
       <Filter>detours</Filter>
     </ClCompile>
+    <ClCompile Include="payload\TextureFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="payload\payload.rc" />
@@ -19,5 +20,6 @@
     <ClInclude Include="payload\detours\d3d11.h">
       <Filter>detours</Filter>
     </ClInclude>
+    <ClInclude Include="payload\TextureFilter.h" />
   </ItemGroup>
 </Project>

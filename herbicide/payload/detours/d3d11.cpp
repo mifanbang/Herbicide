@@ -37,9 +37,9 @@ namespace {
 
 
 	
-uint32_t sOffsetCreateTexture2D = 0;
-uint32_t sOffsetUnmap = 0;
-uint32_t sOffsetMap = 0;
+void* s_addrCreateTexture2D = nullptr;
+void* s_addrUnmap = nullptr;
+void* s_addrMap = nullptr;
 
 ResourceSuspectList s_suspectList;
 
@@ -76,8 +76,7 @@ HRESULT WINAPI CreateTexture2D(
 Trampoline:
 		push ebp
 		mov ebp, esp
-		mov eax, D3D11CreateDevice
-		add eax, sOffsetCreateTexture2D
+		mov eax, s_addrCreateTexture2D
 		add eax, 5
 		jmp eax
 
@@ -123,8 +122,7 @@ HRESULT WINAPI Map(
 Trampoline:
 		push ebp
 		mov ebp, esp
-		mov eax, D3D11CreateDevice
-		add eax, sOffsetMap
+		mov eax, s_addrMap
 		add eax, 5
 		jmp eax
 
@@ -208,8 +206,7 @@ EndDumpTexture:
 Trampoline:
 		push ebp
 		mov ebp, esp
-		mov eax, D3D11CreateDevice
-		add eax, sOffsetUnmap
+		mov eax, s_addrUnmap
 		add eax, 5
 		jmp eax
 
@@ -218,7 +215,7 @@ ResultAvailable:
 }
 
 
-HRESULT WINAPI MyD3D11CreateDevice(
+HRESULT WINAPI D3D11CreateDevice(
 	IDXGIAdapter            *pAdapter,
 	D3D_DRIVER_TYPE         DriverType,
 	HMODULE                 Software,
@@ -234,20 +231,20 @@ HRESULT WINAPI MyD3D11CreateDevice(
 	auto result = CallTram32(::D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 
 	// hooking via vtable
-	auto vtableDevice = *reinterpret_cast<uint32_t**>(*ppDevice);
+	auto vtableDevice = *reinterpret_cast<void***>(*ppDevice);
 	{
-		sOffsetCreateTexture2D = vtableDevice[5] - reinterpret_cast<uint32_t>(D3D11CreateDevice);
+		s_addrCreateTexture2D = vtableDevice[5];
 		gan::InlineHooking32 hook(reinterpret_cast<decltype(detour::CreateTexture2D)*>(vtableDevice[5]), detour::CreateTexture2D);
 		hook.Hook();
 	}
-	auto vtableDeviceContext = *reinterpret_cast<uint32_t**>(*ppImmediateContext);
+	auto vtableDeviceContext = *reinterpret_cast<void***>(*ppImmediateContext);
 	{
-		sOffsetMap = vtableDeviceContext[14] - reinterpret_cast<uint32_t>(D3D11CreateDevice);
+		s_addrMap = vtableDeviceContext[14];
 		gan::InlineHooking32 hook(reinterpret_cast<decltype(detour::Map)*>(vtableDeviceContext[14]), detour::Map);
 		hook.Hook();
 	}
 	{
-		sOffsetUnmap = vtableDeviceContext[15] - reinterpret_cast<uint32_t>(D3D11CreateDevice);
+		s_addrUnmap = vtableDeviceContext[15];
 		gan::InlineHooking32 hook(reinterpret_cast<decltype(detour::Unmap)*>(vtableDeviceContext[15]), detour::Unmap);
 		hook.Hook();
 	}

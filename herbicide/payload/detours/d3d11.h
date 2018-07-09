@@ -28,8 +28,7 @@ namespace detour {
 
 
 
-// avoid using the same name as D3D11's because inline assembler does not recognize C++ namespace scoping
-HRESULT WINAPI MyD3D11CreateDevice(
+HRESULT WINAPI D3D11CreateDevice(
 	IDXGIAdapter* pAdapter,
 	D3D_DRIVER_TYPE DriverType,
 	HMODULE Software,

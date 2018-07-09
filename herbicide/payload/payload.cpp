@@ -56,7 +56,7 @@ public:
 	ScenarioMirror()
 		: Scenario()
 	{
-		m_hookList.emplace_back(::D3D11CreateDevice, detour::MyD3D11CreateDevice);
+		m_hookList.emplace_back(::D3D11CreateDevice, detour::D3D11CreateDevice);
 	}
 };
 

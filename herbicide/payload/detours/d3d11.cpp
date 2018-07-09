@@ -25,6 +25,7 @@
 
 #if TEXTURE_DUMPING_MODE
 	#include <D3DX11tex.h>
+	#pragma comment(lib, "d3dx11.lib")
 #endif  // TEXTURE_DUMPING_MODE
 
 #include <gandr/hooking.h>

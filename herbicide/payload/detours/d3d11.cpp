@@ -49,13 +49,6 @@ std::unordered_map<ID3D11Resource*, D3D11_MAPPED_SUBRESOURCE> s_mappedRes;
 #endif  // TEXTURE_DUMPING_MODE
 
 
-}  // unnamed namespace
-
-
-
-namespace detour {
-
-
 
 HRESULT WINAPI CreateTexture2D(
 	[[maybe_unused]]ID3D11Device* pDevice,
@@ -216,6 +209,15 @@ ResultAvailable:
 }
 
 
+
+}  // unnamed namespace
+
+
+
+namespace detour {
+
+
+
 HRESULT WINAPI D3D11CreateDevice(
 	IDXGIAdapter            *pAdapter,
 	D3D_DRIVER_TYPE         DriverType,
@@ -235,18 +237,18 @@ HRESULT WINAPI D3D11CreateDevice(
 	auto vtableDevice = *reinterpret_cast<void***>(*ppDevice);
 	{
 		s_addrCreateTexture2D = vtableDevice[5];
-		gan::InlineHooking32 hook(reinterpret_cast<decltype(detour::CreateTexture2D)*>(vtableDevice[5]), detour::CreateTexture2D);
+		gan::InlineHooking32 hook(reinterpret_cast<decltype(CreateTexture2D)*>(vtableDevice[5]), CreateTexture2D);
 		hook.Hook();
 	}
 	auto vtableDeviceContext = *reinterpret_cast<void***>(*ppImmediateContext);
 	{
 		s_addrMap = vtableDeviceContext[14];
-		gan::InlineHooking32 hook(reinterpret_cast<decltype(detour::Map)*>(vtableDeviceContext[14]), detour::Map);
+		gan::InlineHooking32 hook(reinterpret_cast<decltype(Map)*>(vtableDeviceContext[14]), Map);
 		hook.Hook();
 	}
 	{
 		s_addrUnmap = vtableDeviceContext[15];
-		gan::InlineHooking32 hook(reinterpret_cast<decltype(detour::Unmap)*>(vtableDeviceContext[15]), detour::Unmap);
+		gan::InlineHooking32 hook(reinterpret_cast<decltype(Unmap)*>(vtableDeviceContext[15]), Unmap);
 		hook.Hook();
 	}
 

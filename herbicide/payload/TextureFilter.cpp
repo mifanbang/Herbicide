@@ -18,7 +18,7 @@
 
 #include "TextureFilter.h"
 
-#include <gandr/Hash.h>
+#include <Hash.h>
 
 
 

@@ -22,8 +22,8 @@
 #include <windows.h>
 #include <shlwapi.h>
 
-#include <gandr/Buffer.h>
-#include <gandr/Handle.h>
+#include <Buffer.h>
+#include <Handle.h>
 
 #include "shared/herbicide.h"
 #include "shared/util.h"

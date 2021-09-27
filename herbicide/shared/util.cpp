@@ -21,9 +21,9 @@
 
 #include <windows.h>
 
-#include <gandr/Debugger.h>
-#include <gandr/DllPreloadDebugSession.h>
-#include <gandr/Handle.h>
+#include <Debugger.h>
+#include <DllPreloadDebugSession.h>
+#include <Handle.h>
 
 #include "herbicide.h"
 
@@ -114,11 +114,11 @@ namespace {
 
 #ifdef _DEBUG
 	// just for the purpose to override OnPreEvent()
-	class PurifierDLLPreloadDebugSession : public gan::DLLPreloadDebugSession
+	class PurifierDLLPreloadDebugSession : public gan::DllPreloadDebugSession
 	{
 	public:
-		PurifierDLLPreloadDebugSession(const CreateProcessParam& newProcParam, const wchar_t* pPayloadPath)
-			: gan::DLLPreloadDebugSession(newProcParam, pPayloadPath)
+		PurifierDLLPreloadDebugSession(const CreateProcessParam& newProcParam, const wchar_t* pPayloadPath, Option option)
+			: gan::DllPreloadDebugSession(newProcParam, pPayloadPath, option)
 		{ }
 
 	private:
@@ -129,7 +129,7 @@ namespace {
 	};
 
 #else
-	using PurifierDLLPreloadDebugSession = gan::DLLPreloadDebugSession;
+	using PurifierDLLPreloadDebugSession = gan::DllPreloadDebugSession;
 
 #endif  // _DEBUG
 }  // unnamed namespace
@@ -142,7 +142,7 @@ uint32_t CreatePurifiedProcess(const wchar_t* szExePath, const wchar_t* szCurrDi
 	gan::DebugSession::CreateProcessParam createParam;
 	createParam.imagePath = szExePath;
 	createParam.currentDir = szCurrDir;
-	if (!debugger.AddSession<PurifierDLLPreloadDebugSession>(createParam, szPayloadPath))
+	if (!debugger.AddSession<PurifierDLLPreloadDebugSession>(createParam, szPayloadPath, gan::DllPreloadDebugSession::Option::EndSessionSync).lock())
 		return 0;
 
 	// cache pid

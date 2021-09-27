@@ -18,7 +18,7 @@
 
 #include <vector>
 
-#include <gandr/hooking.h>
+#include <Hook.h>
 
 #include "shared/herbicide.h"
 #include "shared/util.h"
@@ -36,17 +36,17 @@ public:
 	void Start()
 	{
 		for (auto& hook : m_hookList)
-			hook.Hook();
+			hook.Install();
 	}
 
 	void Stop()
 	{
 		for (auto& hook : m_hookList)
-			hook.Unhook();
+			hook.Uninstall();
 	}
 
 protected:
-	std::vector<gan::InlineHooking32> m_hookList;
+	std::vector<gan::Hook> m_hookList;
 };
 
 

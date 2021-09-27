@@ -28,7 +28,7 @@
 	#pragma comment(lib, "d3dx11.lib")
 #endif  // TEXTURE_DUMPING_MODE
 
-#include <gandr/hooking.h>
+#include <Hook.h>
 
 #include "shared/util.h"
 #include "../TextureFilter.h"
@@ -59,10 +59,11 @@ HRESULT WINAPI CreateTexture2D(
 {
 	HRESULT result;
 	__asm {
-		push dword ptr[ebp + 14h]
-		push dword ptr[ebp + 10h]
-		push dword ptr[ebp + 0Ch]
-		push dword ptr[ebp + 8h]
+		lea eax, pDevice
+		push dword ptr[eax + 0Ch]
+		push dword ptr[eax + 8h]
+		push dword ptr[eax + 4h]
+		push dword ptr[eax]
 		call Trampoline
 		mov result, eax
 		jmp ResultAvailable
@@ -103,12 +104,13 @@ HRESULT WINAPI Map(
 {
 	HRESULT result;
 	__asm {
-		push dword ptr[ebp + 1Ch]
-		push dword ptr[ebp + 18h]
-		push dword ptr[ebp + 14h]
-		push dword ptr[ebp + 10h]
-		push dword ptr[ebp + 0Ch]
-		push dword ptr[ebp + 8h]
+		lea eax, pContext
+		push dword ptr[eax + 14h]
+		push dword ptr[eax + 10h]
+		push dword ptr[eax + 0Ch]
+		push dword ptr[eax + 8h]
+		push dword ptr[eax + 4h]
+		push dword ptr[eax]
 		call Trampoline
 		mov result, eax
 		jmp ResultAvailable
@@ -191,9 +193,10 @@ EndDumpTexture:
 #endif  // TEXTURE_DUMPING_MODE
 
 	__asm {
-		push dword ptr[ebp + 10h]
-		push dword ptr[ebp + 0Ch]
-		push dword ptr[ebp + 8h]
+		lea eax, pContext
+		push dword ptr[eax + 8h]
+		push dword ptr[eax + 4h]
+		push dword ptr[eax]
 		call Trampoline
 		jmp ResultAvailable
 
@@ -231,25 +234,25 @@ HRESULT WINAPI D3D11CreateDevice(
 	ID3D11DeviceContext     **ppImmediateContext
 )
 {
-	auto result = CallTram32(::D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+	auto result = gan::Hook::GetTrampoline(::D3D11CreateDevice)(pAdapter, DriverType, Software, Flags | D3D11_CREATE_DEVICE_DEBUG, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 
-	// hooking via vtable
+	// hooking via vtable. ref: ID3D11DeviceVtbl and ID3D11DeviceContextVtbl in d3d11.h
 	auto vtableDevice = *reinterpret_cast<void***>(*ppDevice);
 	{
 		s_addrCreateTexture2D = vtableDevice[5];
-		gan::InlineHooking32 hook(reinterpret_cast<decltype(CreateTexture2D)*>(vtableDevice[5]), CreateTexture2D);
-		hook.Hook();
+		gan::Hook hook { reinterpret_cast<decltype(CreateTexture2D)*>(vtableDevice[5]), CreateTexture2D };
+		hook.Install();
 	}
 	auto vtableDeviceContext = *reinterpret_cast<void***>(*ppImmediateContext);
 	{
 		s_addrMap = vtableDeviceContext[14];
-		gan::InlineHooking32 hook(reinterpret_cast<decltype(Map)*>(vtableDeviceContext[14]), Map);
-		hook.Hook();
+		gan::Hook hook { reinterpret_cast<decltype(Map)*>(vtableDeviceContext[14]), Map };
+		hook.Install();
 	}
 	{
 		s_addrUnmap = vtableDeviceContext[15];
-		gan::InlineHooking32 hook(reinterpret_cast<decltype(Unmap)*>(vtableDeviceContext[15]), Unmap);
-		hook.Hook();
+		gan::Hook hook { reinterpret_cast<decltype(Unmap)*>(vtableDeviceContext[15]), Unmap };
+		hook.Install();
 	}
 
 	return result;

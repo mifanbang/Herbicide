@@ -22,8 +22,8 @@
 #include <memory>
 #include <utility>
 
-#include <gandr/Buffer.h>
-#include <gandr/Hash.h>
+#include <Buffer.h>
+#include <Hash.h>
 
 
 

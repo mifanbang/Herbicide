@@ -41,26 +41,6 @@ const std::wstring& GetPayloadFileName()
 }
 
 
-// return empty string if failed
-std::wstring GetSteamDir()
-{
-	std::wstring pathSteamDir;
-
-	HKEY hRegKey;
-	DWORD dwSize = MAX_PATH;
-	wchar_t szPath[MAX_PATH];
-
-	if (::RegOpenKeyW(HKEY_CURRENT_USER, L"SOFTWARE\\Valve\\Steam", &hRegKey) == NO_ERROR) {
-		if (::RegQueryValueExW(hRegKey, L"SteamPath", nullptr, nullptr, reinterpret_cast<PBYTE>(szPath), &dwSize) == NO_ERROR)
-			pathSteamDir = szPath;
-		::RegCloseKey(hRegKey);
-	}
-
-	return pathSteamDir;
-}
-
-
-
 }  // unnamed namespace
 
 
@@ -190,6 +170,24 @@ std::wstring GetPayloadPath()
 
 std::wstring GetMirrorDir()
 {
-	auto steamDir = GetSteamDir();
-	return steamDir.size() > 0 ? steamDir + L"/steamapps/common/Mirror/" : steamDir;
+	std::wstring output;
+
+	HKEY hRegKey;
+	DWORD dwSize = MAX_PATH;
+	wchar_t szPath[MAX_PATH];
+
+	const auto regOpenResult = ::RegOpenKeyExW(
+		HKEY_LOCAL_MACHINE,
+		L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Steam App 644560",
+		REG_OPTION_OPEN_LINK,
+		KEY_READ | KEY_WOW64_64KEY,
+		&hRegKey
+	);
+	if (regOpenResult == NO_ERROR) {
+		if (::RegQueryValueExW(hRegKey, L"InstallLocation", nullptr, nullptr, reinterpret_cast<PBYTE>(szPath), &dwSize) == NO_ERROR)
+			output = szPath;
+		::RegCloseKey(hRegKey);
+	}
+
+	return output;
 }

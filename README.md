@@ -1,3 +1,7 @@
+# Notice: This is an archived project
+
+The game this tool was targeting had changed its assets so that the censorship was embedded into all CGs instead of blending multiple textures on the fly. This main change had rendered this project incapable of any uncensoring. Please consider looking for a gameasset patch elsewhere if you're still feeling lewd.
+
 # Herbicide
 
 Removing flowers and rabbits in the game *Mirror*<br>
@@ -40,11 +44,11 @@ Since the project cannot contain any copyrighted material from the game, it can 
 
 ## Building the Code 建構程式 代码建置
 
-The solution file and project files in this repository are maintained with [Visual Studio 2017](https://www.visualstudio.com/vs/community/). Support of various features in C++17 and the function attribute `__declspec(naked)` are required if you are building with other compilers. Please also note that Herbicide uses DLL injection as its core mechanism and Mirror is still built as 32-bit application, so there's no need to build a 64-bit version of the project.
+The solution and project files in this repository are maintained with [Visual Studio 2019](https://www.visualstudio.com/vs/community/). Support of some new features in C++17 is required if you are building with other compilers. Please also note that Herbicide uses DLL injection as its core mechanism and Mirror is still built as 32-bit application, so there's no need to build a 64-bit version of the project.
 
-所有 ê 程式碼 kap 專案檔案攏是使用 [Visual Studio 2017](https://www.visualstudio.com/vs/community/) 來進行維護。Na 是愛用別 ê compiler 進行建構，少寡 C++17 ê 功能 kap 函數屬性 `__declspec(naked)` 必須愛予伊支援 tsiah 會使。另外因為 Mirror 猶 koh 是 32-bit ê 程式，而且 Herbicide 主要用 DLL injection ê 方法運作，所以 bô 需要將伊建構成 64-bit 程式。
+所有 ê 程式碼 kap 專案檔案攏是使用 [Visual Studio 2019](https://www.visualstudio.com/vs/community/) 來進行維護。Na 是愛用別 ê compiler 進行建構，少寡 C++17 ê 功能必須愛予伊支援 tsiah 會使。另外因為 Mirror 猶 koh 是 32-bit ê 程式，而且 Herbicide 主要用 DLL injection ê 方法運作，所以 bô 需要將伊建構成 64-bit 程式。
 
-所有的代码与项目都透过 [Visual Studio 2017](https://www.visualstudio.com/vs/community/) 进行维持。由于代码中使用了若干 C++17 功能以及 `__declspec(naked)` 函数属性，若使用其他编译器进行建置时须留意这些特性是否获得工具的支持。除此之外，基于 Mirror 仍然是 32 位应用并且 Herbicide 使用 DLL 注入的机制运行，因此并不需要另外为本项目建置 64 位的版本。
+所有的代码与项目都透过 [Visual Studio 2019](https://www.visualstudio.com/vs/community/) 进行维持。由于代码中使用了若干 C++17 功能，若使用其他编译器进行建置时须留意这些特性是否获得工具的支持。除此之外，基于 Mirror 仍然是 32 位应用并且 Herbicide 使用 DLL 注入的机制运行，因此并不需要另外为本项目建置 64 位的版本。
 
 ## Notes on Anti-Virus 關於防毒軟體 关于杀毒软件
 
@@ -56,7 +60,7 @@ Some ill-developed anti-virus software may report Herbicide as malware. Please d
 
 ## Copyright 著作權資訊 著作权信息
 
-Copyright (C) 2018 Mifan Bang <https://debug.tw>.
+Copyright (C) 2018-2021 Mifan Bang <https://debug.tw>.
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 

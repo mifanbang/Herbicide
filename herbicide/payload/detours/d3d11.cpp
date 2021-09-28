@@ -20,12 +20,22 @@
 #pragma warning(disable: 4740)  // flow in or out of inline asm code suppresses global optimization
 
 #define TEXTURE_DUMPING_MODE	0
+#define TEXTURE_DUMPING_LIB		1  // 0 for using legacy D3D11 SDK; 1 for using DirectXTK.
 
 #include "d3d11.h"
 
 #if TEXTURE_DUMPING_MODE
-	#include <D3DX11tex.h>
-	#pragma comment(lib, "d3dx11.lib")
+	#if TEXTURE_DUMPING_LIB == 0
+		#include <D3DX11tex.h>
+		#pragma comment(lib, "d3dx11.lib")
+	#elif TEXTURE_DUMPING_LIB == 1
+		#include <DXGItype.h>
+		#include <wincodec.h>
+		#include <../../DirectXTK/Inc/ScreenGrab.h>
+		#pragma comment(lib, "../../DirectXTK/Bin/Desktop_2019_Win10/Win32/Release/DirectXTK.lib")
+	#else
+		#error "Invalid TEXTURE_DUMPING_LIB value"
+	#endif  // TEXTURE_DUMPING_LIB
 #endif  // TEXTURE_DUMPING_MODE
 
 #include <Hook.h>
@@ -37,7 +47,7 @@
 namespace {
 
 
-	
+ID3D11DeviceContext* s_deviceContext = nullptr;
 void* s_addrCreateTexture2D = nullptr;
 void* s_addrUnmap = nullptr;
 void* s_addrMap = nullptr;
@@ -46,8 +56,66 @@ ResourceSuspectList s_suspectList;
 
 #if TEXTURE_DUMPING_MODE
 std::unordered_map<ID3D11Resource*, D3D11_MAPPED_SUBRESOURCE> s_mappedRes;
-#endif  // TEXTURE_DUMPING_MODE
 
+bool DumpTexture(ID3D11DeviceContext* pContext, ID3D11Resource* pResource, bool checkMappedResource)
+{
+	static bool callFlag = false;  // prevent texture saving function from recursively calling itself
+	static uint32_t uniqueId = 0;
+
+	D3D11_RESOURCE_DIMENSION type;
+	pResource->GetType(&type);
+	if (!callFlag && type == ::D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
+		D3D11_TEXTURE2D_DESC desc;
+		reinterpret_cast<::ID3D11Texture2D*>(pResource)->GetDesc(&desc);
+
+		gan::Hash<256> hash { };
+		if (checkMappedResource) {
+			auto itr = s_mappedRes.find(pResource);
+			if (itr == s_mappedRes.cend())
+				return false;
+			auto mapped = itr->second;
+			s_mappedRes.erase(pResource);
+
+			if (desc.Height >= 32)
+				gan::Hasher::GetSHA(mapped.pData, mapped.RowPitch << 5, hash);
+			else
+				return false;
+		}
+
+		std::wstring path;
+		{
+			path.reserve(MAX_PATH);
+			path.append(L"tx\\tx_");
+			for (int i = 0; i < 32; ++i) {
+				wchar_t buf[32];
+				wsprintf(buf, L"%02X", hash.data[i]);
+				path.append(buf);
+			}
+			path.push_back('_');
+			path.append(std::to_wstring(desc.Format));
+			path.push_back('_');
+			path.append(std::to_wstring(uniqueId++));
+			path.append(L".png");
+		}
+
+		callFlag = true;
+		LRESULT result = S_OK;
+#if TEXTURE_DUMPING_LIB == 0
+		result = ::D3DX11SaveTextureToFileW(pContext, pResource, ::D3DX11_IFF_PNG, path.c_str());
+
+#elif TEXTURE_DUMPING_LIB == 1
+		result = DirectX::SaveWICTextureToFile(pContext, pResource, GUID_ContainerFormatPng, path.c_str(), nullptr, nullptr, true);
+		if (result != S_OK)
+			result = DirectX::SaveDDSTextureToFile(pContext, pResource, path.c_str());
+#endif  // TEXTURE_DUMPING_LIB
+		callFlag = false;
+
+		return result == S_OK;
+	}
+
+	return false;
+}
+#endif  // TEXTURE_DUMPING_MODE
 
 
 HRESULT WINAPI CreateTexture2D(
@@ -77,11 +145,25 @@ Trampoline:
 
 ResultAvailable:
 	}
-
-	DEBUG_MSG(L"CreateTexture2D w=%d h=%d fmt=%d usg=%d dat=%p tex=%p %08X\n", pDesc->Width, pDesc->Height, pDesc->Format, pDesc->Usage, pInitialData, ppTexture2D ? *ppTexture2D : nullptr, GetTickCount());
-
 	if (result != S_OK)
 		return result;
+
+	DEBUG_MSG(
+		L"CreateTexture2D w=%d h=%d fmt=%d usg=%d dat=%p tex=%p\n",
+		pDesc->Width,
+		pDesc->Height,
+		pDesc->Format,
+		pDesc->Usage,
+		pInitialData,
+		ppTexture2D ? *ppTexture2D : nullptr);
+
+	if (pInitialData != nullptr && s_deviceContext != nullptr)
+	{
+		DEBUG_MSG(L"  pInitialData: pSysMem=%p SysMemPitch=%d SysMemSlicePitch=%d\n", pInitialData->pSysMem, pInitialData->SysMemPitch, pInitialData->SysMemSlicePitch);
+#if TEXTURE_DUMPING_MODE
+		DumpTexture(s_deviceContext, *ppTexture2D, false);
+#endif
+	}
 
 	DataFilterList dataFilters;
 	if (GetDataFilterFactory().Match(*pDesc, dataFilters)) {
@@ -102,6 +184,9 @@ HRESULT WINAPI Map(
 	[[maybe_unused]] D3D11_MAPPED_SUBRESOURCE* pMappedResource
 )
 {
+	if (s_deviceContext == nullptr)
+		s_deviceContext = pContext;
+
 	HRESULT result;
 	__asm {
 		lea eax, pContext
@@ -150,47 +235,8 @@ void WINAPI Unmap(
 		s_suspectList.Remove(pResource);  // as mappedData will be invalid after Unmap(), we shouldn't keep it
 
 #if TEXTURE_DUMPING_MODE
-	static bool callFlag = false;
-	D3D11_RESOURCE_DIMENSION type;
-	pResource->GetType(&type);
-	if (!callFlag && type == ::D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
-		D3D11_TEXTURE2D_DESC desc;
-		reinterpret_cast<::ID3D11Texture2D*>(pResource)->GetDesc(&desc);
-
-		gan::Hash<256> hash;
-		{
-			auto itr = s_mappedRes.find(pResource);
-			if (itr == s_mappedRes.cend())
-				goto EndDumpTexture;
-			auto mapped = itr->second;
-			s_mappedRes.erase(pResource);
-
-			if (desc.Height >= 256)
-				gan::Hasher::GetSHA(mapped.pData, mapped.RowPitch << 8, hash);
-			else
-				goto EndDumpTexture;
-		}
-
-		std::string path;
-		{
-			path.reserve(MAX_PATH);
-			path.append("tx\\tx_");
-			for (int i = 0; i < 32; ++i) {
-				char buf[32];
-				sprintf_s(buf, sizeof(buf), "%02X", hash.data[i]);
-				path.append(buf);
-			}
-			path.push_back('_');
-			path.append(std::to_string(desc.Format));
-			path.append(".png");
-		}
-
-		callFlag = true;
-		::D3DX11SaveTextureToFileA(pContext, pResource, ::D3DX11_IFF_PNG, path.c_str());
-		callFlag = false;
-	}
-EndDumpTexture:
-#endif  // TEXTURE_DUMPING_MODE
+	DumpTexture(pContext, pResource, true);
+#endif
 
 	__asm {
 		lea eax, pContext
@@ -210,7 +256,6 @@ Trampoline:
 ResultAvailable:
 	}
 }
-
 
 
 }  // unnamed namespace
@@ -234,25 +279,28 @@ HRESULT WINAPI D3D11CreateDevice(
 	ID3D11DeviceContext     **ppImmediateContext
 )
 {
-	auto result = gan::Hook::GetTrampoline(::D3D11CreateDevice)(pAdapter, DriverType, Software, Flags | D3D11_CREATE_DEVICE_DEBUG, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+	auto result = gan::Hook::GetTrampoline(::D3D11CreateDevice)(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 
 	// hooking via vtable. ref: ID3D11DeviceVtbl and ID3D11DeviceContextVtbl in d3d11.h
 	auto vtableDevice = *reinterpret_cast<void***>(*ppDevice);
 	{
 		s_addrCreateTexture2D = vtableDevice[5];
-		gan::Hook hook { reinterpret_cast<decltype(CreateTexture2D)*>(vtableDevice[5]), CreateTexture2D };
+		gan::Hook hook { reinterpret_cast<decltype(CreateTexture2D)*>(s_addrCreateTexture2D), CreateTexture2D };
 		hook.Install();
+		DEBUG_MSG(L"s_addrCreateTexture2D = %p\n", s_addrCreateTexture2D);
 	}
 	auto vtableDeviceContext = *reinterpret_cast<void***>(*ppImmediateContext);
 	{
 		s_addrMap = vtableDeviceContext[14];
-		gan::Hook hook { reinterpret_cast<decltype(Map)*>(vtableDeviceContext[14]), Map };
+		gan::Hook hook { reinterpret_cast<decltype(Map)*>(s_addrMap), Map };
 		hook.Install();
+		DEBUG_MSG(L"s_addrMap = %p\n", s_addrMap);
 	}
 	{
 		s_addrUnmap = vtableDeviceContext[15];
-		gan::Hook hook { reinterpret_cast<decltype(Unmap)*>(vtableDeviceContext[15]), Unmap };
+		gan::Hook hook { reinterpret_cast<decltype(Unmap)*>(s_addrUnmap), Unmap };
 		hook.Install();
+		DEBUG_MSG(L"s_addrUnmap = %p\n", s_addrUnmap);
 	}
 
 	return result;
